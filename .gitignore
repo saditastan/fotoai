@@ -1,0 +1,121 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# env files
+.env
+.env*.local
+.env.development
+.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDEs and editors
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backend (.NET)
+backend/bin/
+backend/obj/
+backend/uploads/
+backend/processed/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/appsettings.json
+backend/appsettings.Development.json
+backend/appsettings.Production.json
+
+# Python
+ai-services/**/__pycache__/
+ai-services/**/*.py[cod]
+ai-services/**/*$py.class
+ai-services/**/*.so
+ai-services/.Python
+ai-services/venv/
+ai-services/env/
+ai-services/ENV/
+ai-services/.venv
+ai-services/models/*.pth
+ai-services/models/*.pt
+ai-services/models/*.onnx
+ai-services/.pytest_cache/
+ai-services/.coverage
+ai-services/htmlcov/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Application specific
+uploads/
+processed/
+temp/
+cache/
+*.tmp
+.env 
+.env.local 
+node_modules 
+__pycache__ 

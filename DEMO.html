@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FotoAI - Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #08080c; color: #f8f8fc; font-family: system-ui; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .card { background: #1c1c20; border-radius: 12px; padding: 2rem; margin: 1rem 0; }
+        .btn { background: #c8b4a0; color: #08080c; padding: 0.75rem 1.5rem; border-radius: 8px; 
+               cursor: pointer; border: none; font-weight: 500; }
+        .btn:hover { background: #a08c78; }
+        .upload-zone { border: 2px dashed #c8b4a0; border-radius: 12px; padding: 3rem; 
+                       text-align: center; cursor: pointer; }
+        .upload-zone:hover { border-color: #a08c78; background: #1c1c20; }
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+                      gap: 1rem; margin-top: 1rem; }
+        .photo-item { aspect-ratio: 4/3; background: #2c2c30; border-radius: 8px; overflow: hidden; 
+                      position: relative; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; 
+                  font-size: 0.875rem; }
+        .status.processing { background: #fef3c7; color: #92400e; }
+        .status.done { background: #d1fae5; color: #065f46; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header style="text-align: center; padding: 3rem 0;">
+            <h1 style="font-size: 3rem; font-weight: 300; margin-bottom: 0.5rem;">fotoAI</h1>
+            <p style="font-size: 1.125rem; color: #c8b4a0;">Profesyonel Emlak Fotoğraf İyileştirme Platformu</p>
+        </header>
+
+        <div class="card">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Yeni Proje Oluştur</h2>
+            <input type="text" id="projectName" placeholder="Proje adı (örn: Bağdat Cad. No:123)" 
+                   style="width: 100%; padding: 0.75rem; border-radius: 8px; background: #2c2c30; 
+                          border: 1px solid #3c3c40; color: #f8f8fc; margin-bottom: 1rem;">
+            <button class="btn" onclick="createProject()">Proje Oluştur</button>
+        </div>
+
+        <div id="projectSection" style="display: none;">
+            <div class="card">
+                <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Fotoğraf Yükle</h2>
+                <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;" 
+                           onchange="uploadPhotos(event)">
+                    <p style="font-size: 1.25rem; margin-bottom: 0.5rem;">📸 Fotoğrafları sürükle veya tıkla</p>
+                    <p style="color: #a0a0a0;">RAW, JPG, PNG desteklenir</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 style="font-size: 1.5rem; margin: 0;">Fotoğraflar</h2>
+                    <button class="btn" onclick="processAll()" id="processBtn" style="display: none;">
+                        Tümünü İyileştir
+                    </button>
+                </div>
+                <div id="photoGrid" class="photo-grid"></div>
+            </div>
+
+            <div id="processingSection" style="display: none;">
+                <div class="card" style="text-align: center;">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 2rem;">İşleniyor...</h2>
+                    <div style="font-size: 4rem; margin: 2rem 0;">🌙</div>
+                    <p style="font-size: 2rem; color: #c8b4a0;" id="progressText">0 / 0</p>
+                </div>
+            </div>
+
+            <div id="resultsSection" style="display: none;">
+                <div class="card">
+                    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">İyileştirilmiş Fotoğraflar</h2>
+                    <div id="resultsGrid" class="photo-grid"></div>
+                    <button class="btn" style="margin-top: 1rem;" onclick="downloadAll()">
+                        Tümünü İndir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let photos = [];
+        let projectName = '';
+
+        function createProject() {
+            projectName = document.getElementById('projectName').value.trim();
+            if (!projectName) {
+                alert('Lütfen proje adı girin');
+                return;
+            }
+            document.getElementById('projectSection').style.display = 'block';
+        }
+
+        function uploadPhotos(event) {
+            const files = Array.from(event.target.files);
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const photo = {
+                        id: Date.now() + index,
+                        name: file.name,
+                        url: e.target.result,
+                        status: 'uploaded'
+                    };
+                    photos.push(photo);
+                    renderPhotos();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderPhotos() {
+            const grid = document.getElementById('photoGrid');
+            grid.innerHTML = photos.map(photo => `
+                <div class="photo-item">
+                    <img src="${photo.url}" alt="${photo.name}">
+                    <div style="position: absolute; top: 0.5rem; right: 0.5rem;">
+                        <span class="status ${photo.status === 'processed' ? 'done' : ''}">${
+                            photo.status === 'uploaded' ? 'Yüklendi' : 'İyileştirildi'
+                        }</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('processBtn').style.display = photos.length > 0 ? 'block' : 'none';
+        }
+
+        async function processAll() {
+            document.getElementById('processingSection').style.display = 'block';
+            
+            for (let i = 0; i < photos.length; i++) {
+                document.getElementById('progressText').textContent = `${i + 1} / ${photos.length}`;
+                await new Promise(resolve => setTimeout(resolve, 2000)); // 2 saniye simülasyon
+                photos[i].status = 'processed';
+                photos[i].processedUrl = applyEnhancement(photos[i].url);
+            }
+            
+            document.getElementById('processingSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'block';
+            renderResults();
+        }
+
+        function applyEnhancement(imageUrl) {
+            // Gerçek uygulamada backend'den gelecek
+            return imageUrl; // Demo için aynı görsel
+        }
+
+        function renderResults() {
+            const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = photos.map(photo => `
+                <div class="photo-item">
+                    <img src="${photo.processedUrl || photo.url}" alt="${photo.name}">
+                </div>
+            `).join('');
+        }
+
+        function downloadAll() {
+            alert('Gerçek uygulamada tüm fotoğraflar ZIP olarak indirilecek');
+        }
+    </script>
+</body>
+</html>

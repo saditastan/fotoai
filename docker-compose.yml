@@ -1,0 +1,173 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: fotoai-postgres
+    environment:
+      POSTGRES_DB: fotoai
+      POSTGRES_USER: fotoai_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password_change_in_production}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fotoai_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Queue Management
+  redis:
+    image: redis:7-alpine
+    container_name: fotoai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # .NET Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fotoai-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=fotoai;Username=fotoai_user;Password=${DB_PASSWORD:-dev_password_change_in_production}
+      - ConnectionStrings__Redis=redis:6379
+      - Storage__Type=${STORAGE_TYPE:-Local}
+      - Storage__ConnectionString=${STORAGE_CONNECTION_STRING}
+      - AI__AnalysisServiceUrl=http://ai-analysis:8001
+      - AI__RawPipelineUrl=http://ai-raw:8002
+      - AI__JpgPipelineUrl=http://ai-jpg:8003
+      - AI__SeoServiceUrl=http://ai-seo:8004
+      - JWT__Secret=${JWT_SECRET}
+      - JWT__Issuer=FotoAI
+      - JWT__Audience=FotoAI-API
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/processed:/app/processed
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:5000
+    container_name: fotoai-frontend
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+  # Python AI Analysis Service
+  ai-analysis:
+    build:
+      context: ./ai-services/analysis-service
+      dockerfile: Dockerfile
+    container_name: fotoai-ai-analysis
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ai-services/models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Python RAW Processing Pipeline
+  ai-raw:
+    build:
+      context: ./ai-services/raw-pipeline
+      dockerfile: Dockerfile
+    container_name: fotoai-ai-raw
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./ai-services/models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 3G
+
+  # Python JPG Processing Pipeline
+  ai-jpg:
+    build:
+      context: ./ai-services/jpg-pipeline
+      dockerfile: Dockerfile
+    container_name: fotoai-ai-jpg
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./ai-services/models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Python SEO Generation Service
+  ai-seo:
+    build:
+      context: ./ai-services/seo-service
+      dockerfile: Dockerfile
+    container_name: fotoai-ai-seo
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_CACHE_DIR=/models
+    ports:
+      - "8004:8004"
+    volumes:
+      - ./ai-services/models:/models
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 1.5G
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: fotoai-network
