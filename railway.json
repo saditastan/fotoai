@@ -10,3 +10,29 @@
     "restartPolicyMaxRetries": 10
   }
 }
+# Railway için optimize edilmiş Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Sistem bağımlılıkları (güncel paket isimleri)
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python bağımlılıkları
+COPY ai-services/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Uygulama dosyaları
+COPY ai-services/ ./ai-services/
+
+# Port
+EXPOSE 8000
+
+# Başlat
+CMD ["uvicorn", "ai-services.analysis-service.app:app", "--host", "0.0.0.0", "--port", "8000"]
